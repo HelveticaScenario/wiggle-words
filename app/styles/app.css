@@ -6,3 +6,8 @@ html {
   -webkit-backface-visibility: visible;
   backface-visibility: visible;
 }
+
+.absoluteFit {
+	background-color: red;
+	white-space: pre;
+}
