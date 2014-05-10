@@ -1,23 +1,70 @@
+
 define(function(require, exports, module) {
     'use strict';
     // import dependencies
     var Surface = require('famous/core/Surface');
     var Transform = require('famous/core/Transform');
+    var Utils = require('utils');
+    var Context = require('famous/core/Context');
+    var el = document.createElement("div");
+    el.classList.add("hide");
+    document.body.appendChild(el);
+    var tmpContext = new Context(el);
 
 	var usePrefix = document.body.style.webkitTransform !== undefined;
 	var devicePixelRatio = window.devicePixelRatio || 1;
 
 
 	function TextSurface() {
-		transparentApply(Surface,this,arguments);
-		// this.on('deploy',this.setSize)
+		Utils.transparentApply(Surface,this,arguments);
+        tmpContext._node.set(this);
+        this.commit(tmpContext._nodeContext);
+		var i = 0;
+        var target = this._currTarget;
+        // this.eventHandler.emit('recall');
+        this.recall(target);
+        target.style.display = 'none';
+        target.style.width = '';
+        target.style.height = '';
+        // this._size = null;
+        _cleanupStyles.call(this, target);
+        var classList = this.getClassList();
+        _cleanupClasses.call(this, target);
+        for (i = 0; i < classList.length; i++) target.classList.remove(classList[i]);
+        if (this.elementClass) {
+            if (this.elementClass instanceof Array) {
+                for (i = 0; i < this.elementClass.length; i++) {
+                    target.classList.remove(this.elementClass[i]);
+                }
+            }
+            else {
+                target.classList.remove(this.elementClass);
+            }
+        }
+        _removeEventListeners.call(this, target);
+        this._currTarget = null;
+        tmpContext._allocator.deallocate(target);
+        _setInvisible(target);
 	}
 	TextSurface.prototype = Object.create(Surface.prototype);
 	TextSurface.prototype.constructor = TextSurface;
-
-    function transparentApply(fun, that, args) {
-        return fun.apply(that,Array.prototype.slice.apply(args));
+    //  Attach Famous event handling to document events emanating from target
+    //    document element.  This occurs just after deployment to the document.
+    //    Calling this enables methods like #on and #pipe.
+    function _addEventListeners(target) {
+        for (var i in this.eventHandler.listeners) {
+            target.addEventListener(i, this.eventForwarder);
+        }
     }
+
+    //  Detach Famous event handling from document events emanating from target
+    //  document element.  This occurs just before recall from the document.
+    function _removeEventListeners(target) {
+        for (var i in this.eventHandler.listeners) {
+            target.removeEventListener(i, this.eventForwarder);
+        }
+    }
+
      //  Apply to document all changes from removeClass() since last setup().
     function _cleanupClasses(target) {
         for (var i = 0; i < this._dirtyClasses.length; i++) target.classList.remove(this._dirtyClasses[i]);
@@ -29,6 +76,14 @@ define(function(require, exports, module) {
     function _applyStyles(target) {
         for (var n in this.properties) {
             target.style[n] = this.properties[n];
+        }
+    }
+
+    // Clear all Famous-managed styles from the document element.
+    // These will be deployed to the document on call to #setup().
+    function _cleanupStyles(target) {
+        for (var n in this.properties) {
+            target.style[n] = '';
         }
     }
 
@@ -84,6 +139,19 @@ define(function(require, exports, module) {
         };
     }
 
+    // format origin as CSS percentage string
+    function _formatCSSOrigin(origin) {
+        return (100 * origin[0]).toFixed(6) + '% ' + (100 * origin[1]).toFixed(6) + '%';
+    }
+
+     // Directly apply given origin coordinates to the document element as the
+     // appropriate webkit CSS style.
+    var _setOrigin = usePrefix ? function(element, origin) {
+        element.style.webkitTransformOrigin = _formatCSSOrigin(origin);
+    } : function(element, origin) {
+        element.style.transformOrigin = _formatCSSOrigin(origin);
+    };
+
      // Shrink given document element until it is effectively invisible.
     var _setInvisible = usePrefix ? function(element) {
         element.style.webkitTransform = 'scale3d(0.0001,0.0001,1)';
@@ -97,6 +165,7 @@ define(function(require, exports, module) {
         return (a && b) ? (a[0] !== b[0] || a[1] !== b[1]) : a !== b;
     }
 
+
     function _hideTarget (target) {
         var oldVisibility = target.style.visibility;
         target.style.visibility = 'hidden';
@@ -107,15 +176,26 @@ define(function(require, exports, module) {
         target.style.visibility = visibilityVal;
     }
 
+    TextSurface.prototype.getSize = function getSize (actual) {
+        if(this._currTarget){
+            // this._currTarget.style.width = '';
+            // this._currTarget.style.height = '';
+            return [this._currTarget.clientWidth, this._currTarget.clientHeight];
+            
+            
+        }
+        return actual ? this._size : (this.size || this._size || [0,0]);
+    }
 
 	TextSurface.prototype.setSize = function setSize () {
         if(this._currTarget){
-            this._currTarget.style.width = '';
-            this._currTarget.style.height = '';
-			this.size = this._currTarget ? [this._currTarget.clientWidth, this._currTarget.clientHeight] : [true,true];
-        	this._sizeDirty = false;
-        	console.log(this.size)
+            // this._currTarget.style.width = '';
+            // this._currTarget.style.height = '';
+			this.size = [this._currTarget.clientWidth, this._currTarget.clientHeight];
+        	
+        	// console.log(this.size)
 		}
+        this._sizeDirty = true;
 	}
 
     TextSurface.prototype.commit = function commit(context) {
@@ -189,8 +269,8 @@ define(function(require, exports, module) {
 	        
 	        if (this._sizeDirty) {
 	            if (this._size) {
-	                target.style.width = (this._size[0] !== true) ? this._size[0] + 'px' : '';
-	                target.style.height = (this._size[1] !== true) ? this._size[1] + 'px' : '';
+	                // target.style.width = (this._size[0] !== true) ? this._size[0] + 'px' : '';
+	                // target.style.height = (this._size[1] !== true) ? this._size[1] + 'px' : '';
 	            }
 	            this._sizeDirty = false;
 	        }

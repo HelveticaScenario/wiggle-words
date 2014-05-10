@@ -21,32 +21,50 @@ define(function(require, exports, module) {
     // import dependencies
     var Engine = require('famous/core/Engine');
     var Modifier = require('famous/core/Modifier');
-    var Transform = require('famous/core/Transform');
+    var Transform = window.Transform = require('famous/core/Transform');
     var Surface = require('famous/core/Surface')
+    var TextNodeView = require('./TextNodeView');
     var TextNodeSurface = require('./TextNodeSurface');
+    var SequentialLayout = require('famous/views/SequentialLayout');
+    var View  = require('famous/core/View');
+    var StateModifier = require('famous/modifiers/StateModifier');
+    var Utility = require('famous/utilities/Utility');
 
     // create the main context
     var mainContext = Engine.createContext();
+    var classes = ['absoluteFit', 'backfaceVisibility'];
+    var strArr = "h e e e e".split('');
 
+    var nodeArray = strArr.map(function(e) {
+        return new TextNodeSurface({
+            content: e,
+            classes: classes
+        });
+    })
+    window.arr = nodeArray;
     // your app here
-    var logo = new TextNodeSurface({
-        // size: [200, 200],
-        content: '/content/images/famous_logo.png',
-        classes: ['absoluteFit']
+    // var logo2 = new TextNodeView({
+    //     content: '/content/images/famous_logo.png',
+    //     classes: ['absoluteFit', 'backfaceVisibility']
+    // });
+
+    var sl = new SequentialLayout({
+        direction: Utility.Direction.X
     });
-    window.surface = logo;
+    sl.sequenceFrom(nodeArray);
+    // sl.sequenceFrom([logo]);
 
     var initialTime = Date.now();
     var centerSpinModifier = new Modifier({
-        origin: [0.25, 0.25],
+        origin: [0.5, 0.5],
 
-        // transform : function() {
-        //     return Transform.rotateY(.002 * (Date.now() - initialTime));
-        // }
-    });
-window.csm = centerSpinModifier;
-window.t = function() {
+        transform : function() {
             return Transform.rotateY(.002 * (Date.now() - initialTime));
         }
-    mainContext.add(centerSpinModifier).add(logo);
+    });
+// window.csm = centerSpinModifier;
+// window.t = function() {
+//             return Transform.rotateY(.002 * (Date.now() - initialTime));
+//         }
+    mainContext.add(centerSpinModifier).add(sl);
 });

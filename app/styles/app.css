@@ -8,6 +8,11 @@ html {
 }
 
 .absoluteFit {
-	background-color: red;
+	/*background-color: red;*/
+	white-space: pre;
+}
+
+.hide {
+	visibility: hidden;
 	white-space: pre;
 }
